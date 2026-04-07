@@ -2,82 +2,190 @@
 <html lang="it">
 <head>
     <meta charset="UTF-8">
-    <title>Video Hub con Google Sheets</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YouTube Player Hub - Google Sheets</title>
     <style>
-        body { font-family: sans-serif; margin: 0; display: flex; height: 100vh; background: #1a1a1a; color: white; }
-        #sidebar { width: 300px; background: #2a2a2a; border-right: 1px solid #444; overflow-y: auto; padding: 15px; }
-        #player-container { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-        iframe { width: 90%; height: 80%; border: none; background: #000; }
-        .video-item { 
-            padding: 10px; margin-bottom: 5px; background: #3a3a3a; border-radius: 4px; 
-            cursor: pointer; font-size: 14px; transition: 0.2s;
+        :root {
+            --bg-color: #0f0f0f;
+            --sidebar-color: #1a1a1a;
+            --item-hover: #3f3f3f;
+            --accent-color: #ff0000;
+            --text-color: #ffffff;
         }
-        .video-item:hover { background: #555; }
-        .btn-refresh { width: 100%; padding: 10px; margin-bottom: 15px; background: #0f9d58; color: white; border: none; cursor: pointer; font-weight: bold; }
+
+        body {
+            font-family: 'Roboto', Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* Sidebar sinistra */
+        #sidebar {
+            width: 300px;
+            background-color: var(--sidebar-color);
+            border-right: 1px solid #333;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            padding: 20px;
+            text-align: center;
+            border-bottom: 1px solid #333;
+        }
+
+        #playlist {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px;
+        }
+
+        .video-item {
+            padding: 12px;
+            margin-bottom: 8px;
+            background: #2a2a2a;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.2s;
+            font-size: 14px;
+            border-left: 5px solid transparent;
+        }
+
+        .video-item:hover {
+            background: var(--item-hover);
+        }
+
+        .video-item.active {
+            border-left-color: var(--accent-color);
+            background: #333;
+        }
+
+        /* Area Player destra */
+        #main-viewer {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background-color: #000;
+        }
+
+        #player-container {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+
+        .btn-refresh {
+            background: var(--accent-color);
+            color: white;
+            border: none;
+            padding: 10px;
+            width: 100%;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+
+        .status-msg {
+            text-align: center;
+            color: #888;
+            font-size: 12px;
+            margin-top: 10px;
+        }
     </style>
 </head>
 <body>
 
-<div id="sidebar">
-    <button class="btn-refresh" onclick="caricaDatiDaGoogle()">Aggiorna Lista</button>
-    <div id="playlist">Caricamento...</div>
-</div>
+    <div id="sidebar">
+        <div class="header">
+            <h3 style="margin:0">I Miei Video</h3>
+            <button class="btn-refresh" onclick="caricaDati()">Aggiorna Lista</button>
+            <div id="loading-status" class="status-msg">In attesa...</div>
+        </div>
+        <div id="playlist">
+            <!-- I video caricati appariranno qui -->
+        </div>
+    </div>
 
-<div id="player-container">
-    <iframe id="mainPlayer" src=""></iframe>
-    <h2 id="videoTitle">Seleziona un video</h2>
-</div>
+    <div id="main-viewer">
+        <div id="player-container">
+            <iframe id="videoFrame" src="" allow="autoplay; fullscreen"></iframe>
+        </div>
+    </div>
 
 <script>
-    // --- INCOLLA QUI IL TUO LINK GOOGLE SHEETS (CSV) ---
-    const SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTuWBs6QFmSfRyrmxdioOjXtOLAY7k9YPIItpuEUDmsidqzfLldzsFlBQ7rdEKUJNfzkqnjQynKKUcs/pub?output=csv';
+    // Il tuo link Google Sheets fornito
+    const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTuWBs6QFmSfRyrmxdioOjXtOLAY7k9YPIItpuEUDmsidqzfLldzsFlBQ7rdEKUJNfzkqnjQynKKUcs/pub?output=csv";
 
-    async function caricaDatiDaGoogle() {
-        if (SHEET_CSV_URL === 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTuWBs6QFmSfRyrmxdioOjXtOLAY7k9YPIItpuEUDmsidqzfLldzsFlBQ7rdEKUJNfzkqnjQynKKUcs/pub?output=csv') {
-            document.getElementById('playlist').innerHTML = "Errore: Inserisci il link CSV nel codice.";
-            return;
-        }
+    async function caricaDati() {
+        const status = document.getElementById('loading-status');
+        const playlistDiv = document.getElementById('playlist');
+        status.innerText = "Caricamento...";
+
+        // Usiamo un proxy AllOrigins per evitare errori CORS
+        const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(CSV_URL)}&nocache=${Date.now()}`;
 
         try {
-            const response = await fetch(SHEET_CSV_URL);
+            const response = await fetch(proxyUrl);
+            if (!response.ok) throw new Error('Errore di rete');
             const data = await response.text();
-            // Divide il testo per righe e rimuove spazi vuoti
-            const righe = data.split('\n').filter(r => r.trim() !== "");
             
-            popolaPlaylist(righe);
-        } catch (error) {
-            console.error("Errore nel caricamento:", error);
-            alert("Impossibile caricare i dati da Google Sheets.");
+            // Pulizia righe e creazione lista
+            const righe = data.split(/\r?\n/).map(r => r.trim()).filter(r => r !== "");
+            
+            popolaInterfaccia(righe);
+            status.innerText = "Sincronizzato!";
+        } catch (err) {
+            console.error(err);
+            status.innerText = "Errore di connessione.";
         }
     }
 
-    function estraiId(url) {
-        const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
-        const match = url.trim().match(regExp);
-        return (match && match[2].length == 11) ? match[2] : null;
+    function estraiID(url) {
+        const regex = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+        const match = url.match(regex);
+        return (match && match[2].length === 11) ? match[2] : null;
     }
 
-    function popolaPlaylist(urls) {
+    function popolaInterfaccia(listaLink) {
         const container = document.getElementById('playlist');
-        container.innerHTML = ""; // Svuota la lista
+        container.innerHTML = ""; // Svuota lista attuale
 
-        urls.forEach((url, index) => {
-            const id = estraiId(url);
-            if (id) {
+        listaLink.forEach((link, i) => {
+            const videoID = estraiID(link);
+            if (videoID) {
                 const div = document.createElement('div');
                 div.className = 'video-item';
-                div.innerText = `Video ${index + 1}`;
-                div.onclick = () => {
-                    document.getElementById('mainPlayer').src = `https://www.youtube.com/embed/${id}?autoplay=1`;
-                    document.getElementById('videoTitle').innerText = `In riproduzione: Video ${index + 1}`;
+                div.innerHTML = `<strong>Video #${i + 1}</strong><br><small>${videoID}</small>`;
+                
+                div.onclick = function() {
+                    // Cambia il video nel player
+                    document.getElementById('videoFrame').src = `https://www.youtube.com/embed/${videoID}?autoplay=1`;
+                    
+                    // Gestione stile attivo
+                    document.querySelectorAll('.video-item').forEach(el => el.classList.remove('active'));
+                    div.classList.add('active');
                 };
+                
                 container.appendChild(div);
             }
         });
     }
 
-    // Carica i video all'apertura della pagina
-    caricaDatiDaGoogle();
+    // Caricamento iniziale automatico
+    caricaDati();
 </script>
 
 </body>

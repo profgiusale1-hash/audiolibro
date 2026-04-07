@@ -30,10 +30,10 @@
 
 <script>
     // --- INCOLLA QUI IL TUO LINK GOOGLE SHEETS (CSV) ---
-    const SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTuWBs6QFmSfRyrmxdioOjXtOLAY7k9YPIItpuEUDmsidqzfLldzsFlBQ7rdEKUJNfzkqnjQynKKUcs/pubhtml';
+    const SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTuWBs6QFmSfRyrmxdioOjXtOLAY7k9YPIItpuEUDmsidqzfLldzsFlBQ7rdEKUJNfzkqnjQynKKUcs/pub?output=csv';
 
     async function caricaDatiDaGoogle() {
-        if (SHEET_CSV_URL === 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTuWBs6QFmSfRyrmxdioOjXtOLAY7k9YPIItpuEUDmsidqzfLldzsFlBQ7rdEKUJNfzkqnjQynKKUcs/pubhtml') {
+        if (SHEET_CSV_URL === 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTuWBs6QFmSfRyrmxdioOjXtOLAY7k9YPIItpuEUDmsidqzfLldzsFlBQ7rdEKUJNfzkqnjQynKKUcs/pub?output=csv') {
             document.getElementById('playlist').innerHTML = "Errore: Inserisci il link CSV nel codice.";
             return;
         }

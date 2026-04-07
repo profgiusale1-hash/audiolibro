@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <title>Video Hub con Google Sheets</title>
+    <style>
+        body { font-family: sans-serif; margin: 0; display: flex; height: 100vh; background: #1a1a1a; color: white; }
+        #sidebar { width: 300px; background: #2a2a2a; border-right: 1px solid #444; overflow-y: auto; padding: 15px; }
+        #player-container { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        iframe { width: 90%; height: 80%; border: none; background: #000; }
+        .video-item { 
+            padding: 10px; margin-bottom: 5px; background: #3a3a3a; border-radius: 4px; 
+            cursor: pointer; font-size: 14px; transition: 0.2s;
+        }
+        .video-item:hover { background: #555; }
+        .btn-refresh { width: 100%; padding: 10px; margin-bottom: 15px; background: #0f9d58; color: white; border: none; cursor: pointer; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<div id="sidebar">
+    <button class="btn-refresh" onclick="caricaDatiDaGoogle()">Aggiorna Lista</button>
+    <div id="playlist">Caricamento...</div>
+</div>
+
+<div id="player-container">
+    <iframe id="mainPlayer" src=""></iframe>
+    <h2 id="videoTitle">Seleziona un video</h2>
+</div>
+
+<script>
+    // --- INCOLLA QUI IL TUO LINK GOOGLE SHEETS (CSV) ---
+    const SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTuWBs6QFmSfRyrmxdioOjXtOLAY7k9YPIItpuEUDmsidqzfLldzsFlBQ7rdEKUJNfzkqnjQynKKUcs/pubhtml';
+
+    async function caricaDatiDaGoogle() {
+        if (SHEET_CSV_URL === 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTuWBs6QFmSfRyrmxdioOjXtOLAY7k9YPIItpuEUDmsidqzfLldzsFlBQ7rdEKUJNfzkqnjQynKKUcs/pubhtml') {
+            document.getElementById('playlist').innerHTML = "Errore: Inserisci il link CSV nel codice.";
+            return;
+        }
+
+        try {
+            const response = await fetch(SHEET_CSV_URL);
+            const data = await response.text();
+            // Divide il testo per righe e rimuove spazi vuoti
+            const righe = data.split('\n').filter(r => r.trim() !== "");
+            
+            popolaPlaylist(righe);
+        } catch (error) {
+            console.error("Errore nel caricamento:", error);
+            alert("Impossibile caricare i dati da Google Sheets.");
+        }
+    }
+
+    function estraiId(url) {
+        const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+        const match = url.trim().match(regExp);
+        return (match && match[2].length == 11) ? match[2] : null;
+    }
+
+    function popolaPlaylist(urls) {
+        const container = document.getElementById('playlist');
+        container.innerHTML = ""; // Svuota la lista
+
+        urls.forEach((url, index) => {
+            const id = estraiId(url);
+            if (id) {
+                const div = document.createElement('div');
+                div.className = 'video-item';
+                div.innerText = `Video ${index + 1}`;
+                div.onclick = () => {
+                    document.getElementById('mainPlayer').src = `https://www.youtube.com/embed/${id}?autoplay=1`;
+                    document.getElementById('videoTitle').innerText = `In riproduzione: Video ${index + 1}`;
+                };
+                container.appendChild(div);
+            }
+        });
+    }
+
+    // Carica i video all'apertura della pagina
+    caricaDatiDaGoogle();
+</script>
+
+</body>
+</html>
